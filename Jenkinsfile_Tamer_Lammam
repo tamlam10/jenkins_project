@@ -1,0 +1,68 @@
+pipeline {
+    agent any
+
+    options {
+        disableConcurrentBuilds()
+        skipStagesAfterUnstable()
+        timeout(time: 10, unit: 'MINUTES')
+    }
+
+    environment {
+        VIRTUAL_ENV = 'venv'
+        DEPLOY_DIR = "${JENKINS_HOME}/deployments/Python-CI-CD"
+    }
+
+    stages {
+        stage('Setup') {
+            steps {
+                sh '''
+                    python3 -m venv "$VIRTUAL_ENV"
+                    "$VIRTUAL_ENV/bin/python" -m pip install -r requirements.txt
+                    mkdir -p reports
+                '''
+            }
+        }
+        stage('Lint') {
+            steps {
+                sh '"$VIRTUAL_ENV/bin/flake8" app.py tests/'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh '"$VIRTUAL_ENV/bin/python" -m pytest -v --junitxml=reports/tests.xml'
+            }
+        }
+        stage('Coverage') {
+            steps {
+                sh '''
+                    "$VIRTUAL_ENV/bin/python" -m coverage run -m pytest -v
+                    "$VIRTUAL_ENV/bin/python" -m coverage report > reports/coverage.txt
+                    cat reports/coverage.txt
+                    "$VIRTUAL_ENV/bin/python" -m coverage xml -o reports/coverage.xml
+                    "$VIRTUAL_ENV/bin/python" -m coverage html -d reports/htmlcov
+                '''
+            }
+        }
+        stage('Security Scan') {
+            steps {
+                sh '''
+                    "$VIRTUAL_ENV/bin/bandit" app.py -f json -o reports/bandit.json
+                    cat reports/bandit.json
+                '''
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh 'sh deploy.sh "$DEPLOY_DIR"'
+            }
+        }
+    }
+
+    post {
+        always {
+            junit testResults: 'reports/tests.xml', allowEmptyResults: true
+            archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
+            cleanWs()
+        }
+    }
+}
