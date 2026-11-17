@@ -1,0 +1,42 @@
+Lab 10 Jenkins CI/CD Pipeline
+Tamer Lammam
+17 November 2026
+
+I added Coverage and Security Scan stages to the Python-CI-CD pipeline.
+Coverage runs the tests with coverage.py and generates text, XML and HTML
+reports. The build requires 100% coverage of app.py. Bandit scans app.py
+and saves its results as JSON. Any finding stops the pipeline before deployment.
+
+The Deploy stage runs deploy.sh, which copies app.py to a local deployment
+folder under JENKINS_HOME. It runs the deployed copy and checks that the
+output is "Hello, World from Tamer Lammam!". This folder is outside the
+workspace, so it stays available after cleanWs() removes the workspace.
+Jenkins archives the reports and publishes the test results before cleanup.
+
+I made the greeting match the personalized test in the lab. I also added
+pytest, coverage and bandit to requirements.txt, since the original file
+only listed flake8. The pipeline calls the virtual environment executables
+directly, which works with Jenkins' default shell without using source.
+
+Build results
+Job: Python-CI-CD
+Definition: Pipeline script from SCM, Git, branch main
+Script path: Jenkinsfile_Tamer_Lammam
+Build: #1
+Source commit: c47a13e6af7d47a223e64a005b7b65a02fd42d57
+Result: SUCCESS
+Setup: dependencies installed successfully
+Lint: flake8 passed for app.py and tests/
+Test: 3 passed
+Coverage: 4 statements, 0 missed, 100%
+Security Scan: 0 issues in app.py, no scanning errors
+Deploy: local copy ran successfully and the greeting matched
+
+The full Jenkins console output is in pipeline_output.txt. The test,
+coverage and security reports are in build_evidence/.
+Jenkins build: http://127.0.0.1:8081/job/Python-CI-CD/1/
+GitHub: https://github.com/tamlam10/jenkins_project
+
+The build ran on macOS with Python 3.13.7 and Jenkins 2.528.1. Git,
+Pipeline and SSH Agent plugins were active. The Jenkins environment used
+a PyPI mirror because connections to pypi.org failed on this network.
